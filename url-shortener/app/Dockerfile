@@ -10,6 +10,8 @@ COPY . .
 ## Runtime Stage
 FROM tiangolo/uvicorn-gunicorn-fastapi
 WORKDIR /app
+
+# update TABLE_NAME env variable in task definition
 ENV TABLE_NAME=changeme
 COPY --from=build /w /usr/local
 COPY --from=build /app /app

@@ -1,17 +1,21 @@
-### Example Dockerfile - i don't want to see copy and paste of this pls. Make your own and make sure it works. Make sure it's light, secure and instructions to run are there. 
+## Build Stage
 
-# FROM python:3.12-slim AS build
-# WORKDIR /w
-# COPY requirements.txt .
-# RUN pip install --prefix=/out -r requirements.txt
-# COPY src/ ./src
+# image with uvicorn and fastapi pre-installed
+FROM tiangolo/uvicorn-gunicorn-fastapi AS build
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/w -r requirements.txt
+COPY . .
 
-# FROM gcr.io/distroless/python3-debian12
-# ENV PYTHONPATH=/app \
-#     TABLE_NAME=changeme
-# WORKDIR /app
-# COPY --from=build /out /usr/local
-# COPY --from=build /w/src /app
-# USER 65532:65532
-# EXPOSE 8080
-# CMD ["-m", "uvicorn", "main:app", "--host=0.0.0.0", "--port=8080"]
+## Runtime Stage
+FROM tiangolo/uvicorn-gunicorn-fastapi
+WORKDIR /app
+ENV TABLE_NAME=changeme
+COPY --from=build /w /usr/local
+COPY --from=build /app /app
+
+## non-root user
+USER 65532:65532
+
+EXPOSE 8080
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]

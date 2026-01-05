@@ -6,7 +6,7 @@ resource "aws_ecs_service" "main" {
   name            = "url-shortener-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_task.arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type = "FARGATE"
 
   load_balancer {
@@ -39,6 +39,13 @@ container_definitions = jsonencode([
     name      = "url-shortener"
     image     = "${var.ecr_repo_url}@${var.ecr_image_digest}"
     essential = true
+
+    environment = [
+        {
+            name = "TABLE_NAME"
+            value = "url-shortener"
+        }
+    ]
 
     portMappings = [
       {
@@ -113,7 +120,7 @@ resource "aws_iam_role" "ecs_task_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
+  role       = aws_iam_role.ecs_task_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
   
 }

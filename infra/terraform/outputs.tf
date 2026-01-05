@@ -43,14 +43,12 @@ output "alb_sg" {
 }
 
 output "ecs_service_sg_id" {
-  value       = module.ecs_service_sg_id
+  value       = module.sg.ecs_service_sg_id
   description = "ecs service security group"
 }
 
-# ecs module outputs
-
-output "ecs_service_sg_id" {
-  value = module.sg.ecs_service_sg_id
+output "endpoint_sg_id" {
+    value = module.sg.endpoint_sg_id
 }
 
 # ecr module outputs

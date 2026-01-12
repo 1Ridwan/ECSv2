@@ -8,7 +8,7 @@ name: Terraform CI/CD
 
 on:
   pull_request:
-    paths: [./infra/modules]
+    paths: [./infra/modules/*]
     branches: [main]
   # push:
   #   branches: [main]

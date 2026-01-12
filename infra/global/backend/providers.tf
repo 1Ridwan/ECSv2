@@ -9,6 +9,6 @@ terraform {
 }
 
 provider "aws" {
-  region  = "eu-west-2"
+  region  = var.vpc_region
   profile = "default"
 }

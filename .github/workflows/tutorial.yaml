@@ -5,13 +5,14 @@ name: Terraform CI/CD
 #     paths: ['**.tf', '**.tfvars']
 #   push:
 #     branches: [main]
-  
+
 on:
   pull_request:
-    paths:
-      - 'infra/modules'
-  push:
+    paths: ['**.tf', '**.tfvars']
     branches: [main]
+      - main
+  # push:
+  #   branches: [main]
 
 permissions:
   id-token: write

@@ -1,13 +1,13 @@
 # S3 bucket for remote state
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "terraform-state-ridwan-ecs"
+  bucket = var.bucket_name
   lifecycle { prevent_destroy = true }
   tags = { Name = "Terraform State"}
 }
 
 
 resource "aws_s3_bucket_versioning" "tf_state" {
-  bucket = aws_s3_bucket.etf_state.id
+  bucket = aws_s3_bucket.tf_state.id
   versioning_configuration {
     status = "Enabled"
   }

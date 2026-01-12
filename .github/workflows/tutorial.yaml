@@ -1,0 +1,94 @@
+name: Terraform CI/CD
+
+# on:
+#   pull_request:
+#     paths: ['**.tf', '**.tfvars']
+#   push:
+#     branches: [main]
+  
+on:
+  pull_request:
+    paths:
+      - 'infra/modules'
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/GitHubActionsTerraformRole
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/Github-actions-k8s
+          role-session-name: tfapply
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Format
+        working-directory: ./infra/dev
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: ./infra/dev
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ./infra/dev
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan-dev
+        working-directory: ./infra/dev
+        run: terraform plan -no-color -input=false
+        continue-on-error: true
+
+      - name: Comment PR dev
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+              
+              <details><summary>Show Plan</summary>
+              
+              \`\`\`terraform
+              ${{ steps.plan.outputs.stdout }}
+              \`\`\`
+              
+              </details>`
+            });
+
+      - name: Terraform Apply
+        working-directory: ./infra/dev
+        env:
+          TF_VAR_hosted_zone_arn: ${{ secrets.HOSTED_ZONE_ARN }}
+          TF_VAR_hosted_zone_id:     ${{ secrets.HOSTED_ZONE_ID }}
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve

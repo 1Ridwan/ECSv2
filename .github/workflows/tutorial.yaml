@@ -41,7 +41,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
         with:
-          role-to-assume: arn:aws:iam::241661649258:role/Github-actions-k8s
+          role-to-assume: arn:aws:iam::241661649258:role/GitHub-Actions-ECSv2
           role-session-name: tfapply
           aws-region: ${{ env.AWS_REGION }}
 

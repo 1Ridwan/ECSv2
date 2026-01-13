@@ -1,7 +1,7 @@
 # create public facing load balancer
 
 resource "aws_lb" "main" {
-  name               = "alb-${var.env_name}"
+  name               = "alb-test${var.env_name}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = var.alb_sg

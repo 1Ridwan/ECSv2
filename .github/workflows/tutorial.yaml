@@ -72,7 +72,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+              body: `#### Terraform Plan 📖 \`${{ steps.plan-dev.outcome }}\`
               
               <details><summary>Show Plan</summary>
               

@@ -14,13 +14,13 @@ on:
   # push:
   #   branches: [main]
 
+env:
+  AWS_REGION: eu-west-2
+
 permissions:
   id-token: write
   contents: read
   pull-requests: write
-
-env:
-  AWS_REGION: eu-west-2
 
 jobs:
   terraform:
@@ -41,7 +41,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
         with:
-          role-to-assume: arn:aws:iam::241661649258:role/GitHub-Actions-ECSv2
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
           role-session-name: tfapply
           aws-region: ${{ env.AWS_REGION }}
 

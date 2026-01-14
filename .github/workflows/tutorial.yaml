@@ -42,24 +42,24 @@ jobs:
         uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
         with:
           role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
-          role-session-name: tfapply
+          role-session-name: tf-dev
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Format
-        working-directory: ./infra/dev
+        working-directory: ./infra//env/dev
         run: terraform fmt -check
 
       - name: Terraform Init
-        working-directory: ./infra/dev
+        working-directory: ./infra//env/dev
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: ./infra/dev
+        working-directory: ./infra//env/dev
         run: terraform validate
 
       - name: Terraform Plan
         id: plan-dev
-        working-directory: ./infra/dev
+        working-directory: ./infra//env/dev
         run: terraform plan -no-color -input=false
         continue-on-error: true
 

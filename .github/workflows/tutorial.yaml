@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
           - 'infra/modules/**'
-    branches: [main]
+    branches: [dev]
   # push:
   #   branches: [main]
 
@@ -23,7 +23,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  terraform:
+  terraform-dev:
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     
@@ -60,8 +60,18 @@ jobs:
       - name: Terraform Plan
         id: plan-dev
         working-directory: ./infra//env/dev
-        run: terraform plan -no-color -input=false -var-file dev.tfvars  
+        run: terraform plan -no-color -input=false -out=tfplan-dev -var-file dev.tfvars  
         continue-on-error: true
+
+      - name: Terraform Plan (save to file)
+        working-directory: ./terraform
+        run: terraform plan -no-color -input=false -out=tfplan 
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-dev
+          path: terraform/tfplan-dev
 
       - name: Comment PR dev
         uses: actions/github-script@v7
@@ -83,10 +93,82 @@ jobs:
               </details>`
             });
 
-      # - name: Terraform Apply
-      #   working-directory: ./infra/dev
-      #   # env:
-      #   #   TF_VAR_hosted_zone_arn: ${{ secrets.HOSTED_ZONE_ARN }}
-      #   #   TF_VAR_hosted_zone_id:     ${{ secrets.HOSTED_ZONE_ID }}
-      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      #   run: terraform apply -auto-approve
+### ------------ terraform apply to dev environment ------------ ###
+
+on:
+  pull_request:
+    types:
+      - closed
+    paths:
+          - 'infra/modules/**'
+    branches: [dev]
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo The PR was merged
+
+env:
+  AWS_REGION: eu-west-2
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-dev:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          role-session-name: tf-dev
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Format
+        working-directory: ./infra//env/dev
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: ./infra//env/dev
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ./infra/env/dev
+        run: terraform validate
+
+      # Download the plan artifact produced by PR to dev run
+      - name: Download saved plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-dev
+          path: ./terraform/tfplan-dev
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Terraform Init
+        working-directory: ./infra/env/dev
+        run: terraform init -input=false
+
+      - name: Terraform Apply (exact saved plan)
+        working-directory: ./infra/env/dev
+        # if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+        run: terraform apply -no-color -input=false tfplan-dev
+        

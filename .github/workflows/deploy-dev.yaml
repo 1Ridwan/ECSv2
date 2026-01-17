@@ -60,4 +60,4 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ./infra/env/dev
-        run: terraform apply -no-color -input=false
+        run: terraform apply -no-color -input=false -var-file dev.tfvars  

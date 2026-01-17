@@ -16,7 +16,7 @@ variable "certificate_arn" {
 
 variable "container_port" {
     type = number
-    description = "port for my container"
+    description = "the port for my container task"
 }
 
 variable "apex_domain" {

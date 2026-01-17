@@ -6,7 +6,7 @@ variable "private_subnet_ids" { type = list(string) }
 
 variable "ecr_repo_name" {
       type = string
-      description = "name of the ecr repo with app's container image"
+      description = "name of the ecr repository with app's container image"
   }
 
 variable "ecs_service_sg_id" { type = string }

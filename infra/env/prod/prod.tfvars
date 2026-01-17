@@ -9,3 +9,4 @@ env_name                      = "prod"
 cpu_size                      = 512
 memory_size                   = 1024
 table_name                    = "url-shortener"
+number_of_azs                 = 3

@@ -1,0 +1,112 @@
+name: Terraform Destroy
+
+# workflow can only be run manually
+on:
+  workflow_dispatch:
+   branches:
+     - main
+     
+jobs:
+  destroy-dev:
+    name: Terraform Destroy Dev
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pulls latest version of code from GitHub repository
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          role-session-name: destroy-dev
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Initialise terraform
+      - name: Terraform Init
+        working-directory: ./infra/env/dev
+        run: terraform init -input=false
+
+      # Execute terraform destroy and tear down resources
+      - name: Terraform Destroy
+        working-directory: ./terraform/env/dev
+        run: |
+          terraform destroy -auto-approve
+
+  destroy-staging:
+
+    name: Terraform Destroy Staging
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pulls latest version of code from GitHub repository
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          role-session-name: destroy-staging
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Initialise terraform
+      - name: Terraform Init
+        working-directory: ./infra/env/staging
+        run: terraform init -input=false
+
+      # Execute terraform destroy and tear down resources
+      - name: Terraform Destroy
+        working-directory: ./terraform/env/staging
+        run: |
+          terraform destroy -auto-approve
+
+  destroy-staging:
+    name: Terraform Destroy Production
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pulls latest version of code from GitHub repository
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          role-session-name: destroy-prod
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Initialise terraform
+      - name: Terraform Init
+        working-directory: ./infra/env/prod
+        run: terraform init -input=false
+
+      # Execute terraform destroy and tear down resources
+      - name: Terraform Destroy
+        working-directory: ./terraform/env/prod
+        run: |
+          terraform destroy -auto-approve

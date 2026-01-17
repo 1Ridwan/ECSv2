@@ -1,0 +1,79 @@
+#### triggered on PR from dev to staging
+
+name: Terraform Plan for Staging
+
+on:
+  pull_request:
+    paths:
+          - 'infra/modules/**'
+    branches: [staging]
+
+env:
+  AWS_REGION: eu-west-2
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  tfplan-staging:
+    runs-on: ubuntu-latest
+    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Installs Terraform on the GitHub runner
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      # Configures AWS access by using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          role-session-name: tfplan-staging
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Format
+        working-directory: ./infra/env/staging
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: ./infra/env/staging
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ./infra/env/staging
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan-staging
+        working-directory: ./infra/env/staging
+        run: terraform plan -no-color -input=false -var-file staging.tfvars  
+        continue-on-error: true
+
+      - name: Comment PR staging
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `#### Terraform Plan 📖 \`${{ steps.plan-staging.outcome }}\`
+              
+              <details><summary>Show Plan</summary>
+              
+              \`\`\`terraform
+              ${{ steps.plan-staging.outputs.stdout }}
+              \`\`\`
+              
+              </details>`
+            });
+

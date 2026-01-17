@@ -124,7 +124,7 @@ resource "aws_cloudwatch_log_group" "url-shortener" {
 # }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecs-task-execution-role"
+  name = "ecs-task-execution-role-${var.env_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -150,7 +150,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 # ECS task role which allows DDB permissions
 
 resource "aws_iam_role" "ecs_task_role" {
-  name = "ecs-task-role"
+  name = "ecs-task-role-${var.env_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

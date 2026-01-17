@@ -46,7 +46,7 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/dev
+        working-directory: ./infra/env/dev
         run: |
           terraform destroy -auto-approve
 
@@ -81,7 +81,7 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/staging
+        working-directory: ./infra/env/staging
         run: |
           terraform destroy -auto-approve
 
@@ -115,6 +115,6 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/prod
+        working-directory: ./infra/env/prod
         run: |
           terraform destroy -auto-approve

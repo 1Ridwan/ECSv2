@@ -25,5 +25,5 @@ variable "apex_domain" {
 
 variable "test_traffic_port" {
     type = number
-    description = "test traffic port"
+    description = "test traffic port for codedeploy"
 }

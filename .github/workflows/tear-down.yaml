@@ -48,7 +48,7 @@ jobs:
       - name: Terraform Destroy
         working-directory: ./infra/env/dev
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file dev.tfvars  
 
   destroy-staging:
 
@@ -83,7 +83,7 @@ jobs:
       - name: Terraform Destroy
         working-directory: ./infra/env/staging
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file staging.tfvars  
 
   destroy-prod:
     name: Terraform Destroy Production
@@ -117,4 +117,4 @@ jobs:
       - name: Terraform Destroy
         working-directory: ./infra/env/prod
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file prod.tfvars  

@@ -22,7 +22,7 @@ resource "aws_codedeploy_app" "app" {
 # iam role for codedeploy
 
 resource "aws_iam_role" "codedeploy_role" {
-  name = "ecs-code-deploy-role"
+  name = "ecs-code-deploy-role-${var.env_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

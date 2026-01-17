@@ -36,6 +36,6 @@ variable "ecr_repo_name" {
 variable "number_of_azs" {
   type        = number
   description = "number of azs to use"
-  default = 2
+  default     = 2
 }
 

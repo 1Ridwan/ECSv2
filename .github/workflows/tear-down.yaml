@@ -77,7 +77,7 @@ jobs:
         run: |
           terraform destroy -auto-approve
 
-  destroy-staging:
+  destroy-prod:
     name: Terraform Destroy Production
     runs-on: ubuntu-latest
 

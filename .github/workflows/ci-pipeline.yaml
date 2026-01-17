@@ -87,7 +87,8 @@ jobs:
 
   deploy-dev:
     needs: [tfplan-dev]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event.pull_request.merged == true
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     steps:
 

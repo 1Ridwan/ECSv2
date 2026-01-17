@@ -1,4 +1,4 @@
-name: Terraform CI/CD
+name: Terraform Plan for Dev
 
 # on:
 #   pull_request:
@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
           - 'infra/modules/**'
-    branches: [main]
+    branches: [dev]
   # push:
   #   branches: [main]
 
@@ -23,9 +23,9 @@ permissions:
   pull-requests: write
 
 jobs:
-  terraform:
+  tfplan-dev:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     
     steps:
       - name: Checkout
@@ -42,24 +42,24 @@ jobs:
         uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
         with:
           role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
-          role-session-name: tf-dev
+          role-session-name: tfplan-dev
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Format
-        working-directory: ./infra//env/dev
+        working-directory: ./infra/env/dev
         run: terraform fmt -check
 
       - name: Terraform Init
-        working-directory: ./infra//env/dev
+        working-directory: ./infra/env/dev
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: ./infra//env/dev
+        working-directory: ./infra/env/dev
         run: terraform validate
 
       - name: Terraform Plan
         id: plan-dev
-        working-directory: ./infra//env/dev
+        working-directory: ./infra/env/dev
         run: terraform plan -no-color -input=false -var-file dev.tfvars  
         continue-on-error: true
 
@@ -82,11 +82,3 @@ jobs:
               
               </details>`
             });
-
-      # - name: Terraform Apply
-      #   working-directory: ./infra/dev
-      #   # env:
-      #   #   TF_VAR_hosted_zone_arn: ${{ secrets.HOSTED_ZONE_ARN }}
-      #   #   TF_VAR_hosted_zone_id:     ${{ secrets.HOSTED_ZONE_ID }}
-      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      #   run: terraform apply -auto-approve

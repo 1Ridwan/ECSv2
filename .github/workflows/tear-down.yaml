@@ -5,6 +5,14 @@ on:
   workflow_dispatch:
    branches:
      - main
+
+env:
+  AWS_REGION: eu-west-2
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
      
 jobs:
   destroy-dev:

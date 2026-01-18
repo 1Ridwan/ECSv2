@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # ECR repo with container images for app - created outside terraform
 
 data "aws_ecr_repository" "images" {
@@ -7,6 +9,16 @@ data "aws_ecr_repository" "images" {
 data "aws_ecr_image" "app-image" {
   repository_name = data.aws_ecr_repository.images.name
   image_tag = "latest"
+}
+
+# secrets for table name env variable to insert into task definition
+
+data "aws_secretsmanager_secret" "table_name" {
+  arn = "arn:aws:secretsmanager:eu-west-2:${data.aws_caller_identity.current.account_id}:secret:TABLE_NAME-U92X7I"
+}
+
+data "aws_secretsmanager_secret_version" "secret-version" {
+  secret_id = data.aws_secretsmanager_secret.table_name.id
 }
 
 # ----------- ECS resources ----------- #
@@ -67,7 +79,7 @@ container_definitions = jsonencode([
     environment = [
         {
             name = "TABLE_NAME"
-            value = "${var.table_name}-${var.env_name}"
+            value = "${data.aws_secretsmanager_secret_version.secret-version.secret_string}-${var.env_name}"
         }
     ]
 
@@ -169,7 +181,50 @@ resource "aws_iam_role" "ecs_task_role" {
 
 resource "aws_iam_role_policy_attachment" "ecs_task_role_policy" {
   role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess" # limit access to specific table only?
-  
+  policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CustomDynamoDBLimitedAccess${var.env_name}"
 }
 
+
+
+## cloudwatch dashboard
+
+
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "url-shortener-util-${var.env_name}"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            [
+              "AWS/ECS",
+              "CPUUtilization",
+              "ServiceName",
+              "ecs-service-${var.env_name}",
+              "ClusterName",
+              "cluster-${var.env_name}"
+            ]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "eu-west-2"
+          title  = "ECS Service CPU"
+        }
+      },
+      {
+        type   = "text"
+        x      = 0
+        y      = 7
+        width  = 3
+        height = 3
+      }
+    ]
+  })
+}

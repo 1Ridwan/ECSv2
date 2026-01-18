@@ -5,6 +5,14 @@ on:
   workflow_dispatch:
    branches:
      - main
+
+env:
+  AWS_REGION: eu-west-2
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
      
 jobs:
   destroy-dev:
@@ -38,9 +46,9 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/dev
+        working-directory: ./infra/env/dev
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file dev.tfvars  
 
   destroy-staging:
 
@@ -73,11 +81,11 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/staging
+        working-directory: ./infra/env/staging
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file staging.tfvars  
 
-  destroy-staging:
+  destroy-prod:
     name: Terraform Destroy Production
     runs-on: ubuntu-latest
 
@@ -107,6 +115,6 @@ jobs:
 
       # Execute terraform destroy and tear down resources
       - name: Terraform Destroy
-        working-directory: ./terraform/env/prod
+        working-directory: ./infra/env/prod
         run: |
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var-file prod.tfvars  

@@ -125,7 +125,7 @@ resource "aws_vpc_endpoint_route_table_association" "ddb" {
     "com.amazonaws.${var.vpc_region}.ecs-agent",
     "com.amazonaws.${var.vpc_region}.ecs-telemetry",
     "com.amazonaws.${var.vpc_region}.logs",
-    # "com.amazonaws.${var.vpc_region}.secretsmanager",
+    "com.amazonaws.${var.vpc_region}.secretsmanager"
   ]
 }
 

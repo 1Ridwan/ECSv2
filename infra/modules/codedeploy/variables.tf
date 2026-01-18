@@ -27,4 +27,5 @@ variable "test_listener_arn" {
 
 variable "green_target_group_name" {
     type = string
+    description = "name of green target group"
 }

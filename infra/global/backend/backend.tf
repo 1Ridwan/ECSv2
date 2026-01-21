@@ -31,5 +31,4 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
   restrict_public_buckets = true
 }
 
-output "state_bucket"  { value = aws_s3_bucket.tf_state.bucket }
-output "lock_table"    { value = aws_dynamodb_table.tf_locks.name }
+output "tf_state_bucket"  { value = aws_s3_bucket.tf_state.bucket }

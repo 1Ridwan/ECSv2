@@ -224,6 +224,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         y      = 7
         width  = 3
         height = 3
+
+        properties = {
+          markdown = "ECS CPU Dashboard"
+        }
       }
     ]
   })

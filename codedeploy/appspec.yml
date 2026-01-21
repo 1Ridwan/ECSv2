@@ -3,7 +3,7 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "arn:aws:ecs:eu-west-2:241661649258:task-definition/url-service:11"
+        TaskDefinition: "arn:aws:ecs:eu-west-2:241661649258:task-definition/url-service:29"
         LoadBalancerInfo:
           ContainerName: "dev-url-shortener"
           ContainerPort: 8080

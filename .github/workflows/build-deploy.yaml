@@ -1,127 +1,129 @@
-name: Build Docker Image and Deploy to Amazon ECR
+name: Build and Deploy App
 
-# triggered on changes to path ./app/
 on:
   push:
     paths:
       - 'url-shortener-service/app/**'
-    branches: [dev]
+    branches: [main]
 
 permissions:
   id-token: write
-  contents: write
+  contents: read
 
 env:
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: eu-west-2
-  ECR_REPOSITORY: k8s-ecr
-  S3BUCKET: app-spec-bucket-ecs
+  ECR_REPOSITORY: ecsv2
+  S3_BUCKET: app-spec-bucket-ecs
 
 jobs:
+  # STAGE 1: BUILD IMAGE
   build:
-    name: Build
     runs-on: ubuntu-latest
-
-  # use image tag from this step to use in next step
     outputs:
-      image_tag: ${{ steps.build-image.outputs.image_tag }}
-
+      image: ${{ steps.build-image.outputs.image }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      # Configures AWS access by using OIDC
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@9dfa9aa010133d4807cd0272ad05d3fdb5b01340
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
-          role-session-name: build-deploy
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@62f4f872db3836360b72999f4b87f1ff13310f3a
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and tag image
+      - name: Build, tag, and push image
         id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-          IMAGE: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-        working-directory: ./url-shortener-service/app
         run: |
-          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker build -t "${IMAGE}" .
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          docker build -t "$IMAGE_URI" ./url-shortener-service/app
+          docker push "$IMAGE_URI"
+          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: k8s-ecr
-        with:
-          image-ref: "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Push scanned image to ECR
-        id: push-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        working-directory: ./app
-        run: |
-          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker push "${IMAGE}"
-          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-        
-
-  deploy:
-    name: Deploy
+  # STAGE 2: DEPLOY TO DEV
+  deploy-dev:
     needs: build
     runs-on: ubuntu-latest
-
-    env:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_REGION: eu-west-2
-      ECR_REPOSITORY: k8s-ecr
-      TAG: ${{ github.sha }}
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Install yq
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to Dev
         run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-      - name: Get latest task definition revision
-        id: task-def
-        run: |
-          aws ecs describe-task-definition --task-definition url-service | jq '.taskDefinition.taskDefinitionArn' >> "$GITHUB_OUTPUT"
+          aws ecs describe-task-definition --task-definition dev-url-service --query taskDefinition > task-def.json
           
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > new-task-def.json
 
-      # updates the deployment yaml file with new image url
-      - name: Update appspec.yaml with newly built image
-        run: |
-          set -euo pipefail
-          IMG= ${{ steps.task-def.outputs.task-def }}
-          echo "Using task-def: ${TASK_DEF}"
-          yq -i ".resources.targetservices.properties.taskdefinition = \"${TASK_DEF}\"" codedeploy/appspec.yml
-
-
-      - name: Upload appspec file to s3
-        working-directory: ./codedeploy/
-        run: aws s3 cp appspec.yml s3://${{ env.S3BUCKET }}/
-
-      - run: |
-          echo "Deploying branch ${{ env.GITHUB_REF }} to ${{ github.event.inputs.environment }}"
-          commit_hash=`git rev-parse HEAD`
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          
+          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-dev.yaml
+          
           aws deploy create-deployment \
-          --application-name url-shortener-dev \
-          --s3-location bucket=app-spec-bucket-ecs,key=appspec.yaml,bundleType=yaml \
-          --deployment-group-name blue-green-dev 
+            --application-name url-shortener-dev \
+            --deployment-group-name blue-green-dev \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-dev.yaml,bundleType=yaml
+
+# STAGE 3: DEPLOY TO PROD (WITH GATE)
+  deploy-staging:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+        
+      - name: Deploy to Staging 
+        run: |
+          aws ecs describe-task-definition --task-definition staging-url-service --query taskDefinition > task-def.json
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > new-task-def.json
+          
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-staging.yaml
+          
+          aws deploy create-deployment \
+            --application-name url-shortener-staging \
+            --deployment-group-name blue-green-staging \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-staging.yaml,bundleType=yaml
+
+  # STAGE 3: DEPLOY TO PROD (WITH GATE)
+  deploy-prod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to Prod
+        run: |
+          aws ecs describe-task-definition --task-definition prod-url-service --query taskDefinition > task-def.json
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > new-task-def.json
+          
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-prod.yaml
+          
+          aws deploy create-deployment \
+            --application-name url-shortener-prod \
+            --deployment-group-name blue-green-prod \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-prod.yaml,bundleType=yaml

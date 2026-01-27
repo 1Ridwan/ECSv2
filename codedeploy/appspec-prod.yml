@@ -5,6 +5,6 @@ Resources:
       Properties:
         TaskDefinition: "<TASK_DEFINITION_ARN>"
         LoadBalancerInfo:
-          ContainerName: "dev-url-shortener"
+          ContainerName: "prod-url-shortener"
           ContainerPort: 8080
         PlatformVersion: "LATEST" 

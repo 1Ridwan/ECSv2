@@ -62,7 +62,7 @@ jobs:
           
           jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
 
-          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-definition.json
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
 
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
           

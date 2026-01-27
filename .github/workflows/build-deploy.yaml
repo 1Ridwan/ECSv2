@@ -1,0 +1,141 @@
+name: Build and Deploy App
+
+on:
+  push:
+    paths:
+      - 'url-shortener-service/app/**'
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+  ECR_REPOSITORY: ecsv2
+  S3_BUCKET: app-spec-bucket-ecs
+
+jobs:
+  # STAGE 1: BUILD IMAGE
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        id: build-image
+        run: |
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          docker build -t "$IMAGE_URI" ./url-shortener-service/app
+          docker push "$IMAGE_URI"
+          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+  # STAGE 2: DEPLOY TO DEV
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to Dev
+        run: |
+          aws ecs describe-task-definition --task-definition dev-url-service --query taskDefinition > task-def.json
+          
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
+
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-dev.yml
+          
+          aws s3 cp codedeploy/appspec-dev.yml s3://${{ env.S3_BUCKET }}/appspec-dev.yaml
+          
+          aws deploy create-deployment \
+            --application-name url-shortener-dev \
+            --deployment-group-name blue-green-dev \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-dev.yaml,bundleType=yaml
+
+# STAGE 3: DEPLOY TO STAGING
+  deploy-staging:
+    needs: [build, deploy-dev]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+        
+      - name: Deploy to Staging 
+        run: |
+          aws ecs describe-task-definition --task-definition staging-url-service --query taskDefinition > task-def.json
+          
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
+
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-staging.yml
+          
+          aws s3 cp codedeploy/appspec-staging.yml s3://${{ env.S3_BUCKET }}/appspec-staging.yaml
+          
+          aws deploy create-deployment \
+            --application-name url-shortener-staging \
+            --deployment-group-name blue-green-staging \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-staging.yaml,bundleType=yaml
+
+  # STAGE 3: DEPLOY TO PROD (WITH GATE)
+  deploy-prod:
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::241661649258:role/github-actions-ecsv2
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to Prod
+        run: |
+          aws ecs describe-task-definition --task-definition prod-url-service --query taskDefinition > task-def.json
+          
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
+
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-prod.yml
+          
+          aws s3 cp codedeploy/appspec-prod.yml s3://${{ env.S3_BUCKET }}/appspec-prod.yaml
+          
+          aws deploy create-deployment \
+            --application-name url-shortener-prod \
+            --deployment-group-name blue-green-prod \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-prod.yaml,bundleType=yaml

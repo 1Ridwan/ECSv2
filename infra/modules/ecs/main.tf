@@ -61,7 +61,7 @@ resource "aws_ecs_service" "main" {
 
 # TODO: pass TABLE_NAME to task definition through vault?
 resource "aws_ecs_task_definition" "app_task" {
-  family                   = "url-service"
+  family                   = "${var.env_name}-url-service"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.cpu_size
@@ -224,6 +224,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         y      = 7
         width  = 3
         height = 3
+
+        properties = {
+          markdown = "ECS CPU Dashboard"
+        }
       }
     ]
   })

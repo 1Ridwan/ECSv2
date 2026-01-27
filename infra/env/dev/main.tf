@@ -54,4 +54,13 @@ module "ddb" {
   env_name = var.env_name
 }
 
-# -------- Codedeploy module omitted from dev environment -------- #
+module "codedeploy" {
+  source                  = "../../modules/codedeploy"
+  env_name                = var.env_name
+  ecs_cluster_name        = module.ecs.ecs_cluster_name
+  ecs_service_name        = module.ecs.ecs_service_name
+  prod_listener_arn       = module.alb.prod_listener_arn
+  test_listener_arn       = module.alb.test_listener_arn
+  blue_target_group_name  = module.alb.blue_target_group_name
+  green_target_group_name = module.alb.green_target_group_name
+}

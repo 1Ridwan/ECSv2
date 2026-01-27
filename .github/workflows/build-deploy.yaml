@@ -66,9 +66,9 @@ jobs:
 
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
           
-          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-dev.yml
           
-          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-dev.yaml
+          aws s3 cp codedeploy/appspec-dev.yml s3://${{ env.S3_BUCKET }}/appspec-dev.yaml
           
           aws deploy create-deployment \
             --application-name url-shortener-dev \
@@ -98,9 +98,9 @@ jobs:
 
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
           
-          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-staging.yml
           
-          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-staging.yaml
+          aws s3 cp codedeploy/appspec-staging.yml s3://${{ env.S3_BUCKET }}/appspec-staging.yaml
           
           aws deploy create-deployment \
             --application-name url-shortener-staging \
@@ -131,9 +131,9 @@ jobs:
 
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
           
-          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec-prod.yml
           
-          aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-prod.yaml
+          aws s3 cp codedeploy/appspec-prod.yml s3://${{ env.S3_BUCKET }}/appspec-prod.yaml
           
           aws deploy create-deployment \
             --application-name url-shortener-prod \

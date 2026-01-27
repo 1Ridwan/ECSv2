@@ -75,9 +75,9 @@ jobs:
             --deployment-group-name blue-green-dev \
             --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-dev.yaml,bundleType=yaml
 
-# STAGE 3: DEPLOY TO PROD (WITH GATE)
+# STAGE 3: DEPLOY TO STAGING
   deploy-staging:
-    needs: deploy-dev
+    needs: deploy-staging
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -91,10 +91,15 @@ jobs:
       - name: Deploy to Staging 
         run: |
           aws ecs describe-task-definition --task-definition staging-url-service --query taskDefinition > task-def.json
-          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > new-task-def.json
           
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
+
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
           sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          
           aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-staging.yaml
           
           aws deploy create-deployment \
@@ -119,10 +124,15 @@ jobs:
       - name: Deploy to Prod
         run: |
           aws ecs describe-task-definition --task-definition prod-url-service --query taskDefinition > task-def.json
-          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > new-task-def.json
           
+          jq '.containerDefinitions[0].image = "${{ needs.build.outputs.image }}"' task-def.json > raw-task-def.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' raw-task-def.json > new-task-def.json
+
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
           sed -i "s|<TASK_DEFINITION_ARN>|$NEW_ARN|g" codedeploy/appspec.yml
+          
           aws s3 cp codedeploy/appspec.yml s3://${{ env.S3_BUCKET }}/appspec-prod.yaml
           
           aws deploy create-deployment \

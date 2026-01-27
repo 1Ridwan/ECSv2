@@ -77,7 +77,7 @@ jobs:
 
 # STAGE 3: DEPLOY TO STAGING
   deploy-staging:
-    needs: deploy-dev
+    needs: [build, deploy-dev]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -109,7 +109,7 @@ jobs:
 
   # STAGE 3: DEPLOY TO PROD (WITH GATE)
   deploy-prod:
-    needs: deploy-staging
+    needs: [build, deploy-staging]
     runs-on: ubuntu-latest
     environment: production
     steps:

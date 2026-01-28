@@ -16,7 +16,7 @@ env:
   S3_BUCKET: app-spec-bucket-ecs
 
 jobs:
-  # STAGE 1: BUILD IMAGE
+  # BUILD IMAGE
   build:
     runs-on: ubuntu-latest
     outputs:
@@ -43,7 +43,7 @@ jobs:
           docker push "$IMAGE_URI"
           echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-  # STAGE 2: DEPLOY TO DEV
+  # DEPLOY TO DEV
   deploy-dev:
     needs: build
     runs-on: ubuntu-latest
@@ -75,7 +75,7 @@ jobs:
             --deployment-group-name blue-green-dev \
             --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-dev.yaml,bundleType=yaml
 
-# STAGE 3: DEPLOY TO STAGING
+# DEPLOY TO STAGING
   deploy-staging:
     needs: [build, deploy-dev]
     runs-on: ubuntu-latest
@@ -107,7 +107,7 @@ jobs:
             --deployment-group-name blue-green-staging \
             --s3-location bucket=${{ env.S3_BUCKET }},key=appspec-staging.yaml,bundleType=yaml
 
-  # STAGE 3: DEPLOY TO PROD (WITH GATE)
+  # DEPLOY TO PROD (WITH GATE)
   deploy-prod:
     needs: [build, deploy-staging]
     runs-on: ubuntu-latest

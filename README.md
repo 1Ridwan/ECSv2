@@ -76,7 +76,7 @@ The diagram below illustrates the secure architecture of this deployment.
 
 The deployment strategy follows a rigorous promotion model across Dev, Staging, and Prod environments, ensuring all changes are vetted through automated tests and manual approval gates.
 
-![CI/CD](./images/image3.jpeg)
+![CI/CD](./images/image3.png)
 # 1. Infrastructure as Code (IaC) Pipeline
 
 **Promotion Flow:** Feature Branch ➔ Dev ➔ Staging ➔ Main (Prod).
@@ -89,7 +89,11 @@ The deployment strategy follows a rigorous promotion model across Dev, Staging, 
 
 **Trigger:** Any push to the main branch.
 
-**Process:** 1. Builds a new Docker image and pushes it to Amazon ECR. 2. Triggers an automated Blue/Green CodeDeploy to Dev. 3. Promotes the deployment to Staging. 4. Hits a Final Approval Gate before initiating the Blue/Green canary shift in Production.
+**Process:** 
+- 1. Builds a new Docker image and pushes it to Amazon ECR. 
+- 2. Triggers an automated Blue/Green CodeDeploy to Dev. 
+- 3. Promotes the deployment to Staging. 
+- 4. Hits a Final Approval Gate before initiating the Blue/Green canary shift in Production.
 
 ![CI/CD](./images/image2.jpeg)
 # Reasoning

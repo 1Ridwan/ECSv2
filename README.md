@@ -148,15 +148,13 @@ curl -X POST https://yourdomain.com/shorten \                            ✔ │
 ```
 
 ## Lessons Learned & Trade-offs
-- **VPC Endpoint Complexity** For a NAT-less architecture to function, multiple endpoints are required (ecr.api, ecr.dkr, s3, logs, and dynamodb). Missing just one prevents the ECS agent from starting.
+- **VPC Endpoint Complexity** For a NAT-less architecture to function, multiple endpoints are required. Missing just one prevents the ECS agent from starting.
 
 - **Blue/Green Deployment Listeners** I learned that there must be an existing listener to the green target group for CodeDeploy to begin a Blue/Green deployment.
 
 - **OIDC Benefits** Transitioning from static keys to OIDC was a major security milestone, ensuring the deployment role is only assumable by my specific GitHub repository and branch.
 
-Bonus (optional)
-
-## Coming soon to this project!
+## Things to add in the future!
 
 - Infracost/tfsec/Trivy in CI
 - CloudWatch dashboard (add p50/p95 latency, 5xx, healthy host count)

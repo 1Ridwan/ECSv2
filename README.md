@@ -12,8 +12,6 @@ This project is a high-performance URL shortener service deployed on AWS ECS Far
 The service provides:
 - **Shorten URLs:** `POST /shorten` with a long URL to receive a unique short code.
 - **Redirects:** `GET /{short_code}` to redirect (302) to the original destination.
----
-```
 
 ## Architecture Diagram
 The diagram below illustrates the secure, NAT-less architecture of this deployment.

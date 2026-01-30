@@ -14,7 +14,7 @@ The service provides:
 - **Redirects:** `GET /{short_code}` to redirect (302) to the original destination.
 
 ## Architecture Diagram
-The diagram below illustrates the secure, NAT-less architecture of this deployment.
+The diagram below illustrates the secure architecture of this deployment.
 
 ![Architecture Diagram](./images/image1.jpeg)
 #### Description:
@@ -70,6 +70,7 @@ The diagram below illustrates the secure, NAT-less architecture of this deployme
         ├── ecs/                    # ECS Cluster & Service Definitions
         ├── sg/                     # Security Group definitions
         └── vpc/                    # NAT-less Networking (VPC Endpoints)
+```
 
 ## CI/CD Strategy
 
